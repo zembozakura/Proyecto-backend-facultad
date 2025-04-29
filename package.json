@@ -1,0 +1,20 @@
+{
+  "name": "proyecto-backend-facultad",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "module",
+    "url": "git+https://github.com/zembozakura/Proyecto-backend-facultad.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zembozakura/Proyecto-backend-facultad/issues"
+  },
+  "homepage": "https://github.com/zembozakura/Proyecto-backend-facultad#readme",
+  "description": ""
+}
