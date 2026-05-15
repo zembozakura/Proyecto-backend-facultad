@@ -1,0 +1,15 @@
+C:\Users\marco\Desktop\ApiMarcos\src\MiApp.Application\bin\Debug\net8.0\MiApp.Application.deps.json
+C:\Users\marco\Desktop\ApiMarcos\src\MiApp.Application\bin\Debug\net8.0\MiApp.Application.dll
+C:\Users\marco\Desktop\ApiMarcos\src\MiApp.Application\bin\Debug\net8.0\MiApp.Application.pdb
+C:\Users\marco\Desktop\ApiMarcos\src\MiApp.Application\bin\Debug\net8.0\MiApp.Domain.dll
+C:\Users\marco\Desktop\ApiMarcos\src\MiApp.Application\bin\Debug\net8.0\MiApp.Domain.pdb
+C:\Users\marco\Desktop\ApiMarcos\src\MiApp.Application\obj\Debug\net8.0\MiApp.Application.csproj.AssemblyReference.cache
+C:\Users\marco\Desktop\ApiMarcos\src\MiApp.Application\obj\Debug\net8.0\MiApp.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\marco\Desktop\ApiMarcos\src\MiApp.Application\obj\Debug\net8.0\MiApp.Application.AssemblyInfoInputs.cache
+C:\Users\marco\Desktop\ApiMarcos\src\MiApp.Application\obj\Debug\net8.0\MiApp.Application.AssemblyInfo.cs
+C:\Users\marco\Desktop\ApiMarcos\src\MiApp.Application\obj\Debug\net8.0\MiApp.Application.csproj.CoreCompileInputs.cache
+C:\Users\marco\Desktop\ApiMarcos\src\MiApp.Application\obj\Debug\net8.0\MiApp.Ap.4971B6B6.Up2Date
+C:\Users\marco\Desktop\ApiMarcos\src\MiApp.Application\obj\Debug\net8.0\MiApp.Application.dll
+C:\Users\marco\Desktop\ApiMarcos\src\MiApp.Application\obj\Debug\net8.0\refint\MiApp.Application.dll
+C:\Users\marco\Desktop\ApiMarcos\src\MiApp.Application\obj\Debug\net8.0\MiApp.Application.pdb
+C:\Users\marco\Desktop\ApiMarcos\src\MiApp.Application\obj\Debug\net8.0\ref\MiApp.Application.dll
