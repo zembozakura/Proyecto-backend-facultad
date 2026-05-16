@@ -1,0 +1,56 @@
+# .NET Core
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.so
+*.dylib
+.vs/
+.vscode/
+
+# Entity Framework
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# NuGet
+.nuget/
+packages/
+*.nupkg
+*.snupkg
+
+# User secrets
+appsettings.Development.json
+secrets.json
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+
+# Visual Studio Code
+*.code-workspace
+
+# Node.js (para frontend)
+node_modules/
+dist/
+.env
+.env.local
+npm-debug.log
+yarn-error.log
+
+# OS
+Thumbs.db
+.DS_Store
