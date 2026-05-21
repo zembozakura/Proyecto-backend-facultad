@@ -1,6 +1,7 @@
 using FluentValidation;
 using MiApp.Application.DTOs;
 using MiApp.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MiApp.WebApi.Controllers;
@@ -8,6 +9,7 @@ namespace MiApp.WebApi.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
+[Authorize]  // ✓ Requiere autenticación para todos los endpoints excepto los que especifiquen [AllowAnonymous]
 public class ProductsController : ControllerBase
 {
     private readonly IProductService _productService;
@@ -31,6 +33,7 @@ public class ProductsController : ControllerBase
     /// Obtiene todos los productos
     /// </summary>
     [HttpGet]
+    [AllowAnonymous]  // ✓ Sin autenticación
     [ProducesResponseType(typeof(List<ProductDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<ProductDto>>> GetAllProducts(CancellationToken ct)
     {
@@ -43,6 +46,7 @@ public class ProductsController : ControllerBase
     /// Obtiene un producto por ID
     /// </summary>
     [HttpGet("{id}")]
+    [AllowAnonymous]  // ✓ Sin autenticación
     [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProductDto>> GetProduct(int id, CancellationToken ct)
@@ -59,8 +63,10 @@ public class ProductsController : ControllerBase
     /// Crea un nuevo producto
     /// </summary>
     [HttpPost]
+    [Authorize(Roles = "Admin")]  // ✓ Solo Admin
     [ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ProductDto>> CreateProduct(
         [FromBody] CreateProductDto dto,
         CancellationToken ct)
@@ -108,8 +114,10 @@ public class ProductsController : ControllerBase
     /// Elimina un producto
     /// </summary>
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]  // ✓ Solo Admin
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult> DeleteProduct(int id, CancellationToken ct)
     {
         _logger.LogInformation("Eliminando producto {ProductId}", id);

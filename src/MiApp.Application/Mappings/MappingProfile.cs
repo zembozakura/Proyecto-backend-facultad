@@ -39,5 +39,9 @@ public class MappingProfile : Profile
                 opt.MapFrom(src => src.Items))
             .ReverseMap();
         CreateMap<CreateOrderDto, Order>();
+
+        // Payment
+        CreateMap<Payment, PaymentDto>().ReverseMap();
+        CreateMap<CreatePaymentDto, Payment>();
     }
 }
