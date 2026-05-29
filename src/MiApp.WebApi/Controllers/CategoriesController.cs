@@ -2,7 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MiApp.Application.DTOs;
-using MiApp.Application.Features.Categories.Commands;
+using MiApp.Application.UseCases.Categories.Commands;
 using MiApp.Application.UseCases.Products.Queries;
 using MiApp.Domain.Interfaces;
 using AutoMapper;

@@ -1,5 +1,5 @@
 using FluentValidation;
-using MiApp.Application.Features.Customers.Commands;
+using MiApp.Application.UseCases.Customers.Commands;
 
 namespace MiApp.Application.Validators;
 

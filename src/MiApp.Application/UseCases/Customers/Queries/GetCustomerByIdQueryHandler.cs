@@ -6,7 +6,7 @@ using MiApp.Domain.Entities;
 using MiApp.Domain.Exceptions;
 using MiApp.Domain.Interfaces;
 
-namespace MiApp.Application.Features.Customers.Queries;
+namespace MiApp.Application.UseCases.Customers.Queries;
 
 public class GetCustomerByIdQueryHandler : IRequestHandler<GetCustomerByIdQuery, CustomerDto>
 {

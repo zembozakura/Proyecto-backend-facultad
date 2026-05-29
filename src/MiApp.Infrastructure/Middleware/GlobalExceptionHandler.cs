@@ -23,13 +23,33 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
 
         var (statusCode, title) = exception switch
         {
-            NotFoundException      => (StatusCodes.Status404NotFound,     exception.Message),
-            ValidationException    => (StatusCodes.Status400BadRequest,   "Validation failed"),
-            DomainException        => (StatusCodes.Status422UnprocessableEntity, exception.Message),
-            _                      => (StatusCodes.Status500InternalServerError, "An unexpected error occurred")
+            NotFoundException   => (StatusCodes.Status404NotFound,              exception.Message),
+            ValidationException => (StatusCodes.Status400BadRequest,            "Validation failed"),
+            DomainException     => (StatusCodes.Status422UnprocessableEntity,   exception.Message),
+            _                   => (StatusCodes.Status500InternalServerError,   "An unexpected error occurred")
         };
 
         httpContext.Response.StatusCode = statusCode;
+
+        if (exception is ValidationException ve)
+        {
+            var errors = ve.Errors
+                .GroupBy(f => f.PropertyName)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(f => f.ErrorMessage).ToArray());
+
+            await httpContext.Response.WriteAsJsonAsync(
+                new ValidationProblemDetails(errors)
+                {
+                    Status   = statusCode,
+                    Title    = title,
+                    Instance = httpContext.Request.Path
+                },
+                cancellationToken);
+
+            return true;
+        }
 
         await httpContext.Response.WriteAsJsonAsync(
             new ProblemDetails

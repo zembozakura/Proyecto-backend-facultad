@@ -6,7 +6,7 @@ using MiApp.Domain.Entities;
 using MiApp.Domain.Interfaces;
 using MiApp.Domain.ValueObjects;
 
-namespace MiApp.Application.Features.Customers.Commands;
+namespace MiApp.Application.UseCases.Customers.Commands;
 
 public class RegisterCustomerCommandHandler : IRequestHandler<RegisterCustomerCommand, CustomerDto>
 {

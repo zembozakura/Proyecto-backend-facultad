@@ -3,8 +3,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MiApp.Application.DTOs;
-using MiApp.Application.Features.Customers.Commands;
-using MiApp.Application.Features.Customers.Queries;
+using MiApp.Application.UseCases.Customers.Commands;
+using MiApp.Application.UseCases.Customers.Queries;
 
 namespace MiApp.WebApi.Controllers;
 

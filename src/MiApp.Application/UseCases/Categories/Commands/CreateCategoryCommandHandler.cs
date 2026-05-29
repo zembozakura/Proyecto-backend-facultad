@@ -5,7 +5,7 @@ using MiApp.Application.DTOs;
 using MiApp.Domain.Entities;
 using MiApp.Domain.Interfaces;
 
-namespace MiApp.Application.Features.Categories.Commands;
+namespace MiApp.Application.UseCases.Categories.Commands;
 
 public class CreateCategoryCommandHandler : IRequestHandler<CreateCategoryCommand, CategoryDto>
 {
