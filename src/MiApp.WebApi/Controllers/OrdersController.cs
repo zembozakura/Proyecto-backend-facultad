@@ -1,133 +1,72 @@
-using MiApp.Application.DTOs;
-using MiApp.Application.Services;
+using System.Security.Claims;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MiApp.Application.DTOs;
+using MiApp.Application.UseCases.Orders.Commands;
+using MiApp.Application.UseCases.Orders.Queries;
 
 namespace MiApp.WebApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
+[Authorize]
 public class OrdersController : ControllerBase
 {
-    private readonly OrderService _orderService;
-    private readonly ILogger<OrdersController> _logger;
+    private readonly IMediator _mediator;
 
-    public OrdersController(OrderService orderService, ILogger<OrdersController> logger)
-    {
-        _orderService = orderService;
-        _logger = logger;
-    }
+    public OrdersController(IMediator mediator) => _mediator = mediator;
 
-    /// <summary>
-    /// Obtiene todas las órdenes
-    /// </summary>
+    /// <summary>GET /api/orders — Admin</summary>
     [HttpGet]
-    [ProducesResponseType(typeof(List<OrderDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<OrderDto>>> GetAllOrders(CancellationToken ct)
-    {
-        _logger.LogInformation("Obteniendo todas las órdenes");
-        var orders = await _orderService.GetAllOrdersAsync(ct);
-        return Ok(orders);
-    }
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(IList<OrderDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IList<OrderDto>>> GetAll(CancellationToken ct) =>
+        Ok(await _mediator.Send(new GetAllOrdersQuery(), ct));
 
-    /// <summary>
-    /// Obtiene una orden por ID con sus items
-    /// </summary>
-    [HttpGet("{id}")]
+    /// <summary>GET /api/orders/{id}</summary>
+    [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<OrderDto>> GetOrder(Guid id, CancellationToken ct)
-    {
-        _logger.LogInformation("Obteniendo orden {OrderId}", id);
-        var order = await _orderService.GetOrderAsync(id, ct);
-        if (order == null)
-            return NotFound(new { message = $"Orden {id} no encontrada" });
+    public async Task<ActionResult<OrderDto>> GetById(Guid id, CancellationToken ct) =>
+        Ok(await _mediator.Send(new GetOrderByIdQuery(id), ct));
 
-        return Ok(order);
-    }
-
-    /// <summary>
-    /// Obtiene órdenes activas con paginación
-    /// </summary>
-    [HttpGet("active/paginated")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult> GetActiveOrders(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10,
-        CancellationToken ct = default)
-    {
-        _logger.LogInformation("Obteniendo órdenes activas - Página: {PageNumber}, Tamaño: {PageSize}", pageNumber, pageSize);
-        
-        var (orders, total) = await _orderService.GetActiveOrdersAsync(pageNumber, pageSize, ct);
-        return Ok(new
-        {
-            data = orders,
-            pagination = new
-            {
-                pageNumber,
-                pageSize,
-                total,
-                totalPages = (int)Math.Ceiling(total / (double)pageSize)
-            }
-        });
-    }
-
-    /// <summary>
-    /// Crea una nueva orden (con items) en transacción atómica
-    /// </summary>
+    /// <summary>POST /api/orders — crea orden en estado Draft</summary>
     [HttpPost]
     [ProducesResponseType(typeof(OrderDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<OrderDto>> CreateOrder(
-        [FromBody] CreateOrderDto dto,
-        CancellationToken ct)
+    public async Task<ActionResult<OrderDto>> Create([FromBody] CreateOrderDto dto, CancellationToken ct)
     {
-        _logger.LogInformation("Creando nueva orden: {OrderNumber}", dto.OrderNumber);
-        
-        try
-        {
-            var order = await _orderService.CreateOrderAsync(dto.OrderNumber, 
-                dto.Items.Select(i => new MiApp.Domain.Entities.OrderItem 
-                { 
-                    ProductId = i.ProductId, 
-                    Quantity = i.Quantity 
-                }), ct);
-            
-            return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, order);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var order = await _mediator.Send(new CreateOrderCommand(dto.CustomerId, dto.Items), ct);
+        return CreatedAtAction(nameof(GetById), new { id = order.Id }, order);
     }
 
-    /// <summary>
-    /// Cancela una orden
-    /// </summary>
-    [HttpPost("{id}/cancel")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    /// <summary>POST /api/orders/{id}/confirm — Admin</summary>
+    [HttpPost("{id:guid}/confirm")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult> CancelOrder(Guid id, CancellationToken ct)
-    {
-        _logger.LogInformation("Cancelando orden {OrderId}", id);
-        
-        try
-        {
-            await _orderService.CancelOrderAsync(id, ct);
-            return Ok(new { message = "Orden cancelada exitosamente" });
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new { message = $"Orden {id} no encontrada" });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<OrderDto>> Confirm(Guid id, CancellationToken ct) =>
+        Ok(await _mediator.Send(new ConfirmOrderCommand(id), ct));
+
+    /// <summary>POST /api/orders/{id}/cancel</summary>
+    [HttpPost("{id:guid}/cancel")]
+    [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<OrderDto>> Cancel(Guid id, CancellationToken ct) =>
+        Ok(await _mediator.Send(new CancelOrderCommand(id), ct));
+
+    /// <summary>POST /api/orders/{id}/items — agrega ítem a una orden Draft</summary>
+    [HttpPost("{id:guid}/items")]
+    [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<OrderDto>> AddItem(
+        Guid id,
+        [FromBody] AddItemDto dto,
+        CancellationToken ct) =>
+        Ok(await _mediator.Send(new AddItemToOrderCommand(id, dto.ProductId, dto.Quantity), ct));
 }

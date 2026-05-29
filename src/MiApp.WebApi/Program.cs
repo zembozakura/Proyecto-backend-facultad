@@ -1,75 +1,30 @@
 using System.Text;
+using FluentValidation;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using MiApp.Application.Interfaces;
-using MiApp.Application.Mappings;
-using MiApp.Application.Services;
-using MiApp.Application.Validators;
-using MiApp.Domain.Entities;
-using MiApp.Domain.Interfaces;
-using MiApp.Infrastructure.Data;
-using MiApp.Infrastructure.Repositories;
-using MiApp.Infrastructure.Services;
-using MiApp.WebApi.Middleware;
-using FluentValidation;
-using Microsoft.EntityFrameworkCore;
+using MiApp.Application.Common.Behaviors;
+using MiApp.Application.UseCases.Products.Commands;
+using MiApp.Infrastructure.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ========================================
-// 1. CONFIGURAR AUTENTICACIÓN JWT
-// ========================================
-var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = builder.Configuration["JwtSettings:SecretKey"];
+// ── SERVICIOS ─────────────────────────────────────────────────────────────────
 
-if (string.IsNullOrEmpty(secretKey) || secretKey.Length < 32)
-{
-    throw new InvalidOperationException("JwtSettings:SecretKey no está configurado o es muy corto (mínimo 32 caracteres)");
-}
-
-// Agregar autenticación con JWT
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-        ValidateIssuer = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidateAudience = true,
-        ValidAudience = jwtSettings["Audience"],
-        ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero
-    };
-});
-
-// ========================================
-// 2. CONFIGURAR AUTORIZACIÓN
-// ========================================
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("AdminOnly", policy =>
-        policy.RequireRole("Admin"));
-});
-
-// ========================================
-// 3. REGISTRAR SERVICIOS
-// ========================================
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(options =>
 {
+    options.SwaggerDoc("v1", new() { Title = "MiApp API", Version = "v1" });
+
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header using Bearer scheme",
-        Name = "Authorization",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Description = "JWT Authorization. Ejemplo: 'Bearer {token}'",
+        Name        = "Authorization",
+        In          = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type        = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme      = "Bearer"
     });
 
     options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
@@ -80,81 +35,75 @@ builder.Services.AddSwaggerGen(options =>
                 Reference = new Microsoft.OpenApi.Models.OpenApiReference
                 {
                     Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer"
+                    Id   = "Bearer"
                 }
             },
-            new string[] { }
+            Array.Empty<string>()
         }
     });
 });
 
-// Configurar EntityFramework Core
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? 
-        "Data Source=apimarcos.db"));
-
-// Configurar AutoMapper
-builder.Services.AddAutoMapper(typeof(MappingProfile));
-
-// Configurar FluentValidation
-builder.Services.AddValidatorsFromAssemblyContaining<CreateProductDtoValidator>();
-
-// Configurar Inyección de Dependencias - JWT y Autenticación
-builder.Services.AddScoped<ITokenService, JwtTokenService>();
-builder.Services.AddScoped<LoginUseCase>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-
-// Configurar Inyección de Dependencias - Aplicación
-builder.Services.AddScoped<IRepository<Product>, Repository<Product>>();
-builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
-builder.Services.AddScoped<ProductService>();
-builder.Services.AddScoped<IProductService, ProductService>();
-builder.Services.AddScoped<OrderService>();
-builder.Services.AddScoped<PaymentService>();
-
-// Agregar Controllers
-builder.Services.AddControllers();
-
-// Configurar CORS para frontend
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontend", policy =>
+// JWT
+var config = builder.Configuration;
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
     {
-        policy.AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader();
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer           = true,
+            ValidIssuer              = config["Jwt:Issuer"],
+            ValidateAudience         = true,
+            ValidAudience            = config["Jwt:Audience"],
+            ValidateLifetime         = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey         = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(config["Jwt:Key"]!)),
+            ClockSkew = TimeSpan.Zero
+        };
     });
+
+builder.Services.AddAuthorization(options =>
+    options.AddPolicy("AdminOnly", p => p.RequireRole("Admin")));
+
+// MediatR + Pipeline Behaviors
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssemblyContaining<CreateProductCommand>();
+    cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+    cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 });
 
-// Configurar Logging
-builder.Services.AddLogging(config =>
-{
-    config.AddConsole();
-    config.AddDebug();
-});
+// FluentValidation — registra todos los validators de Application de una sola vez
+builder.Services.AddValidatorsFromAssemblyContaining<CreateProductCommand>();
+
+// Infrastructure (DbContext, repositories, JWT service, BCrypt, GlobalExceptionHandler)
+builder.Services.AddInfrastructure(builder.Configuration);
+
+// AutoMapper
+builder.Services.AddAutoMapper(typeof(MiApp.Application.Mappings.MappingProfile));
+
+// CORS
+builder.Services.AddCors(options =>
+    options.AddPolicy("AllowFrontend", p =>
+        p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
+
+// ── PIPELINE ──────────────────────────────────────────────────────────────────
 
 var app = builder.Build();
 
-// ========================================
-// 4. CONFIGURAR MIDDLEWARE (ORDEN CRÍTICO)
-// ========================================
+app.UseExceptionHandler();       // PRIMERO — captura toda excepción de la cadena
+
+app.UseHttpsRedirection();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// Middleware personalizado para excepciones
-app.UseMiddleware<ExceptionHandlingMiddleware>();
-
-// Aplicar CORS
 app.UseCors("AllowFrontend");
 
-app.UseHttpsRedirection();
-
-// ✓ ORDEN CORRECTO: Authentication ANTES que Authorization
-app.UseAuthentication();
+app.UseAuthentication();         // ANTES que UseAuthorization
 app.UseAuthorization();
 
 app.MapControllers();

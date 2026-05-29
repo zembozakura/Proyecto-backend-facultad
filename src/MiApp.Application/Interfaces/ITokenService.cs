@@ -1,10 +1,8 @@
-using System.Threading.Tasks;
 using MiApp.Domain.Entities;
 
-namespace MiApp.Application.Interfaces
+namespace MiApp.Application.Interfaces;
+
+public interface ITokenService
 {
-    public interface ITokenService
-    {
-        Task<string> GenerateTokenAsync(User user);
-    }
+    string GenerateToken(User user);
 }

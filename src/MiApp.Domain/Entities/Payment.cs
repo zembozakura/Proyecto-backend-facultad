@@ -1,59 +1,53 @@
-using MiApp.Domain.Entities;
-using MiApp.Domain.Interfaces;
-using System;
-using System.Collections.Generic;
+using MiApp.Domain.Common;
 
-namespace MiApp.Domain.Entities
+namespace MiApp.Domain.Entities;
+
+public enum PaymentStatus
 {
-    /// <summary>
-    /// Entidad de Pago - Contiene información de los pagos realizados
-    /// </summary>
-    public class Payment
-    {
-        public int Id { get; set; }
-        public Guid OrderId { get; set; }
-        public decimal Amount { get; set; }
-        public string? Currency { get; set; } = "ARS";
-        public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
-        public PaymentMethod Method { get; set; }
-        
-        // Campos específicos para cada método de pago
-        public string? MercadoPagoId { get; set; }
-        public string? MercadoPagoPreferenceId { get; set; }
-        public string? BankTransferId { get; set; }
-        public string? UalaTransactionId { get; set; }
-        
-        // Auditoría
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    Pending = 0,
+    Processing = 1,
+    Completed = 2,
+    Failed = 3,
+    Cancelled = 4,
+    Refunded = 5
+}
 
-        // Relación
-        public Order? Order { get; set; }
-    }
+public enum PaymentMethod
+{
+    CreditCard = 0,
+    DebitCard = 1,
+    MercadoPago = 2,
+    BankTransfer = 3,
+    Uala = 4,
+    Cash = 5
+}
 
-    /// <summary>
-    /// Estado del Pago
-    /// </summary>
-    public enum PaymentStatus
-    {
-        Pending = 0,      // Pendiente
-        Processing = 1,   // Procesando
-        Completed = 2,    // Completado
-        Failed = 3,       // Fallido
-        Cancelled = 4,    // Cancelado
-        Refunded = 5      // Reembolsado
-    }
+public class Payment : BaseEntity
+{
+    public Guid OrderId { get; private set; }
+    public decimal Amount { get; private set; }
+    public string Currency { get; private set; } = "ARS";
+    public PaymentStatus Status { get; private set; } = PaymentStatus.Pending;
+    public PaymentMethod Method { get; private set; }
+    public string? MercadoPagoId { get; private set; }
+    public string? MercadoPagoPreferenceId { get; private set; }
+    public string? BankTransferId { get; private set; }
+    public string? UalaTransactionId { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+    public DateTime UpdatedAt { get; private set; }
 
-    /// <summary>
-    /// Método de Pago disponible
-    /// </summary>
-    public enum PaymentMethod
+    private Payment() { }
+
+    public static Payment Create(Guid orderId, decimal amount, PaymentMethod method)
     {
-        CreditCard = 0,    // Tarjeta de Crédito
-        DebitCard = 1,     // Tarjeta de Débito
-        MercadoPago = 2,   // Mercado Pago (Billetera)
-        BankTransfer = 3,  // Transferencia Bancaria
-        Uala = 4,          // Uala (Billetera Digital)
-        Cash = 5           // Efectivo/Otro
+        var payment = new Payment();
+        payment.Id = Guid.NewGuid();
+        payment.OrderId = orderId;
+        payment.Amount = amount;
+        payment.Method = method;
+        payment.Status = PaymentStatus.Pending;
+        payment.CreatedAt = DateTime.UtcNow;
+        payment.UpdatedAt = DateTime.UtcNow;
+        return payment;
     }
 }

@@ -1,200 +1,45 @@
-using MiApp.Application.DTOs;
-using MiApp.Application.Services;
-using MiApp.Domain.Entities;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using MiApp.Application.DTOs;
+using MiApp.Application.UseCases.Payments.Commands;
+using MiApp.Application.UseCases.Payments.Queries;
 
-namespace MiApp.WebApi.Controllers
+namespace MiApp.WebApi.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Produces("application/json")]
+[Authorize]
+public class PaymentsController : ControllerBase
 {
-    /// <summary>
-    /// Controlador de Pagos
-    /// Maneja endpoints relacionados con procesamiento de pagos
-    /// </summary>
-    [ApiController]
-    [Route("api/[controller]")]
-    [Authorize]
-    public class PaymentsController : ControllerBase
+    private readonly IMediator _mediator;
+
+    public PaymentsController(IMediator mediator) => _mediator = mediator;
+
+    /// <summary>GET /api/payments</summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(IList<PaymentDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IList<PaymentDto>>> GetAll(CancellationToken ct) =>
+        Ok(await _mediator.Send(new GetAllPaymentsQuery(), ct));
+
+    /// <summary>GET /api/payments/{id}</summary>
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(PaymentDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PaymentDto>> GetById(Guid id, CancellationToken ct) =>
+        Ok(await _mediator.Send(new GetPaymentByIdQuery(id), ct));
+
+    /// <summary>POST /api/payments</summary>
+    [HttpPost]
+    [ProducesResponseType(typeof(PaymentDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PaymentDto>> Create([FromBody] CreatePaymentDto dto, CancellationToken ct)
     {
-        private readonly PaymentService _paymentService;
-        private readonly ILogger<PaymentsController> _logger;
+        var payment = await _mediator.Send(
+            new CreatePaymentCommand(dto.OrderId, dto.Amount, dto.Method), ct);
 
-        public PaymentsController(
-            PaymentService paymentService,
-            ILogger<PaymentsController> logger)
-        {
-            _paymentService = paymentService;
-            _logger = logger;
-        }
-
-        /// <summary>
-        /// Obtener información de pago por ID
-        /// </summary>
-        /// <param name="id">ID del pago</param>
-        [HttpGet("{id}")]
-        public async Task<ActionResult<PaymentDto>> GetPaymentById(int id)
-        {
-            try
-            {
-                var payment = await _paymentService.GetPaymentByIdAsync(id);
-                return Ok(payment);
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning(ex.Message);
-                return NotFound(new { message = ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Obtener todos los pagos de una orden
-        /// </summary>
-        /// <param name="orderId">ID de la orden</param>
-        [HttpGet("order/{orderId}")]
-        public async Task<ActionResult<List<PaymentDto>>> GetPaymentsByOrderId(Guid orderId)
-        {
-            try
-            {
-                var payments = await _paymentService.GetPaymentsByOrderIdAsync(orderId);
-                return Ok(payments);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error obteniendo pagos de orden");
-                return BadRequest(new { message = "Error obteniendo pagos" });
-            }
-        }
-
-        /// <summary>
-        /// Crear preferencia de pago en Mercado Pago
-        /// </summary>
-        /// <param name="request">Datos de la orden y monto</param>
-        [HttpPost("mercado-pago/preference")]
-        public async Task<ActionResult<MercadoPagoPreferenceDto>> CreateMercadoPagoPreference(
-            [FromBody] CreatePaymentDto request)
-        {
-            try
-            {
-                // Validar datos
-                if (request.Amount <= 0)
-                    return BadRequest(new { message = "Datos inválidos" });
-
-                // Crear pago
-                var payment = await _paymentService.CreateMercadoPagoPaymentAsync(
-                    request.OrderId,
-                    request.Amount);
-
-                // En un entorno real, aquí integrarías con la API de Mercado Pago
-                // Para este ejemplo, devolvemos URLs de demostración
-
-                var preference = new MercadoPagoPreferenceDto
-                {
-                    Id = payment.Id.ToString(),
-                    PreferenceId = "dummy_preference_" + Guid.NewGuid(),
-                    Amount = payment.Amount,
-                    OrderId = payment.OrderId,
-                    // URLs de demostración
-                    InitPoint = "https://checkout.mercadopago.com/checkout/v1/redirect?preference-id=dummy",
-                    SandboxInitPoint = "https://sandbox.mercadopago.com/checkout/v1/redirect?preference-id=dummy"
-                };
-
-                return Ok(preference);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creando preferencia de Mercado Pago");
-                return BadRequest(new { message = "Error procesando pago" });
-            }
-        }
-
-        /// <summary>
-        /// Webhook para notificaciones de Mercado Pago
-        /// </summary>
-        [HttpPost("mercado-pago/webhook")]
-        [AllowAnonymous]
-        public async Task<ActionResult> MercadoPagoWebhook([FromBody] MercadoPagoWebhookDto notification)
-        {
-            try
-            {
-                if (notification?.Type != "payment")
-                    return Ok();
-
-                if (notification?.Data?.Id == null)
-                {
-                    _logger.LogWarning("Webhook recibido sin ID de pago");
-                    return BadRequest(new { message = "ID de pago requerido" });
-                }
-
-                _logger.LogInformation($"Webhook recibido para pago: {notification.Data.Id}");
-
-                // Aquí irían las validaciones con Mercado Pago
-                // y la actualización del estado del pago
-
-                return Ok(new { success = true });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error procesando webhook de Mercado Pago");
-                return Ok(); // Devolver 200 de todas formas para no reintentar
-            }
-        }
-
-        /// <summary>
-        /// Crear pago con transferencia bancaria
-        /// </summary>
-        /// <param name="request">Datos de transferencia bancaria</param>
-        [HttpPost("bank-transfer")]
-        public async Task<ActionResult<PaymentDto>> CreateBankTransfer(
-            [FromBody] CreatePaymentDto request)
-        {
-            try
-            {
-                var payment = await _paymentService.CreateBankTransferPaymentAsync(
-                    request.OrderId,
-                    request.Amount);
-
-                return Ok(payment);
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning(ex.Message);
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creando transferencia bancaria");
-                return BadRequest(new { message = "Error procesando pago" });
-            }
-        }
-
-        /// <summary>
-        /// Crear pago con Uala
-        /// </summary>
-        /// <param name="request">Datos de pago Uala</param>
-        [HttpPost("uala")]
-        public async Task<ActionResult<PaymentDto>> CreateUalaPayment(
-            [FromBody] CreatePaymentDto request)
-        {
-            try
-            {
-                var payment = await _paymentService.CreateUalaPaymentAsync(
-                    request.OrderId,
-                    request.Amount);
-
-                return Ok(payment);
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning(ex.Message);
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creando pago Uala");
-                return BadRequest(new { message = "Error procesando pago" });
-            }
-        }
+        return CreatedAtAction(nameof(GetById), new { id = payment.Id }, payment);
     }
 }

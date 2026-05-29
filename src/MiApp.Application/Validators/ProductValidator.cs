@@ -8,17 +8,17 @@ public class CreateProductDtoValidator : AbstractValidator<CreateProductDto>
     public CreateProductDtoValidator()
     {
         RuleFor(x => x.Name)
-            .NotEmpty().WithMessage("El nombre del producto es requerido")
-            .Length(3, 100).WithMessage("El nombre debe tener entre 3 y 100 caracteres");
+            .NotEmpty().WithMessage("Name is required.")
+            .MaximumLength(100).WithMessage("Name cannot exceed 100 characters.");
 
         RuleFor(x => x.Price)
-            .GreaterThan(0).WithMessage("El precio debe ser mayor a 0");
+            .GreaterThan(0).WithMessage("Price must be greater than zero.");
 
         RuleFor(x => x.Stock)
-            .GreaterThanOrEqualTo(0).WithMessage("El stock no puede ser negativo");
+            .GreaterThanOrEqualTo(0).WithMessage("Stock cannot be negative.");
 
         RuleFor(x => x.CategoryId)
-            .NotEmpty().WithMessage("La categoría es requerida");
+            .NotEmpty().WithMessage("CategoryId is required.");
     }
 }
 
@@ -27,15 +27,13 @@ public class UpdateProductDtoValidator : AbstractValidator<UpdateProductDto>
     public UpdateProductDtoValidator()
     {
         RuleFor(x => x.Name)
-            .Length(3, 100).WithMessage("El nombre debe tener entre 3 y 100 caracteres")
-            .When(x => !string.IsNullOrEmpty(x.Name));
+            .NotEmpty().WithMessage("Name is required.")
+            .MaximumLength(100).WithMessage("Name cannot exceed 100 characters.");
 
         RuleFor(x => x.Price)
-            .GreaterThan(0).WithMessage("El precio debe ser mayor a 0")
-            .When(x => x.Price.HasValue && x.Price > 0);
+            .GreaterThan(0).WithMessage("Price must be greater than zero.");
 
         RuleFor(x => x.Stock)
-            .GreaterThanOrEqualTo(0).WithMessage("El stock no puede ser negativo")
-            .When(x => x.Stock.HasValue);
+            .GreaterThanOrEqualTo(0).WithMessage("Stock cannot be negative.");
     }
 }

@@ -10,18 +10,12 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
     {
         builder.ToTable("Orders");
         builder.HasKey(o => o.Id);
-
-        builder.Property(o => o.OrderNumber)
-            .IsRequired()
-            .HasMaxLength(50);
+        builder.Property(o => o.Id).ValueGeneratedNever();
 
         builder.Property(o => o.Status)
-            .HasDefaultValue(OrderStatus.Pending);
+            .HasConversion<int>()
+            .HasDefaultValue(OrderStatus.Draft);
 
-        builder.Property(o => o.TotalAmount)
-            .HasPrecision(18, 2);
-
-        // Relación: Un Order tiene muchos OrderItems
         builder.HasMany(o => o.Items)
             .WithOne(oi => oi.Order)
             .HasForeignKey(oi => oi.OrderId)

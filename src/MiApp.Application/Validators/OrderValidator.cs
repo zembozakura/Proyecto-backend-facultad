@@ -7,15 +7,11 @@ public class CreateOrderDtoValidator : AbstractValidator<CreateOrderDto>
 {
     public CreateOrderDtoValidator()
     {
-        RuleFor(x => x.OrderNumber)
-            .NotEmpty().WithMessage("El número de orden es requerido")
-            .Length(3, 50).WithMessage("El número debe tener entre 3 y 50 caracteres");
+        RuleFor(x => x.CustomerId)
+            .NotEmpty().WithMessage("CustomerId is required.");
 
         RuleFor(x => x.Items)
-            .NotEmpty().WithMessage("La orden debe tener al menos un item");
-
-        RuleForEach(x => x.Items)
-            .SetValidator(new CreateOrderItemDtoValidator());
+            .NotEmpty().WithMessage("Order must contain at least one item.");
     }
 }
 
@@ -24,9 +20,9 @@ public class CreateOrderItemDtoValidator : AbstractValidator<CreateOrderItemDto>
     public CreateOrderItemDtoValidator()
     {
         RuleFor(x => x.ProductId)
-            .GreaterThan(0).WithMessage("El ID del producto es requerido");
+            .NotEmpty().WithMessage("ProductId is required.");
 
         RuleFor(x => x.Quantity)
-            .GreaterThan(0).WithMessage("La cantidad debe ser mayor a 0");
+            .GreaterThan(0).WithMessage("Quantity must be greater than zero.");
     }
 }

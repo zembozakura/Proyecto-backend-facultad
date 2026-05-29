@@ -1,33 +1,20 @@
-using System;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MiApp.Domain.Entities;
 using MiApp.Domain.Interfaces;
 using MiApp.Infrastructure.Data;
 
-namespace MiApp.Infrastructure.Repositories
+namespace MiApp.Infrastructure.Repositories;
+
+public class UserRepository : IUserRepository
 {
-    public class UserRepository : IUserRepository
-    {
-        private readonly ApplicationDbContext _context;
+    private readonly ApplicationDbContext _context;
 
-        public UserRepository(ApplicationDbContext context)
-        {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
-        }
+    public UserRepository(ApplicationDbContext context) => _context = context;
 
-        public async Task<User?> GetByEmailAsync(string email)
-        {
-            return await _context.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
-        }
+    public async Task<User?> GetByEmailAsync(string email, CancellationToken ct = default) =>
+        await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == email.ToLowerInvariant(), ct);
 
-        public async Task<User?> GetByIdAsync(Guid id)
-        {
-            return await _context.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Id == id);
-        }
-    }
+    public async Task<User?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
+        await _context.Users.FindAsync(new object[] { id }, ct);
 }

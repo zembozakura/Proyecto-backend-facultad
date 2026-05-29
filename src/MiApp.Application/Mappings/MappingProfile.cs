@@ -4,44 +4,24 @@ using MiApp.Domain.Entities;
 
 namespace MiApp.Application.Mappings;
 
-/// <summary>
-/// Configuración de AutoMapper para convertir Entities ↔ DTOs
-/// </summary>
 public class MappingProfile : Profile
 {
     public MappingProfile()
     {
-        // Category
-        CreateMap<Category, CategoryDto>().ReverseMap();
-        CreateMap<CreateCategoryDto, Category>();
+        CreateMap<Category, CategoryDto>();
 
-        // Product
         CreateMap<Product, ProductDto>()
-            .ForMember(dest => dest.Category, opt => 
-                opt.MapFrom(src => src.Category))
-            .ReverseMap();
-        CreateMap<CreateProductDto, Product>();
-        CreateMap<UpdateProductDto, Product>()
-            .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+            .ForMember(d => d.Category, o => o.MapFrom(s => s.Category));
 
-        // OrderItem
+        CreateMap<Customer, CustomerDto>();
+
         CreateMap<OrderItem, OrderItemDto>()
-            .ForMember(dest => dest.ProductName, opt => 
-                opt.MapFrom(src => src.Product!.Name))
-            .ReverseMap();
-        CreateMap<CreateOrderItemDto, OrderItem>();
+            .ForMember(d => d.ProductName, o => o.MapFrom(s => s.Product != null ? s.Product.Name : null));
 
-        // Order
         CreateMap<Order, OrderDto>()
-            .ForMember(dest => dest.Status, opt => 
-                opt.MapFrom(src => src.Status.ToString()))
-            .ForMember(dest => dest.Items, opt => 
-                opt.MapFrom(src => src.Items))
-            .ReverseMap();
-        CreateMap<CreateOrderDto, Order>();
+            .ForMember(d => d.Status, o => o.MapFrom(s => s.Status.ToString()))
+            .ForMember(d => d.Total, o => o.MapFrom(s => s.Total));
 
-        // Payment
-        CreateMap<Payment, PaymentDto>().ReverseMap();
-        CreateMap<CreatePaymentDto, Payment>();
+        CreateMap<Payment, PaymentDto>();
     }
 }

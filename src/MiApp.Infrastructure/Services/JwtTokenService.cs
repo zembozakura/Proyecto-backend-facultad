@@ -1,72 +1,51 @@
-using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using MiApp.Application.Interfaces;
 using MiApp.Domain.Entities;
 
-namespace MiApp.Infrastructure.Services
+namespace MiApp.Infrastructure.Services;
+
+public class JwtTokenService : ITokenService
 {
-    public class JwtTokenService : ITokenService
+    private readonly string _key;
+    private readonly string _issuer;
+    private readonly string _audience;
+    private readonly int _expirationHours;
+
+    public JwtTokenService(IConfiguration configuration)
     {
-        private readonly string _secretKey;
-        private readonly string _issuer;
-        private readonly string _audience;
-        private readonly int _expirationMinutes;
+        _key = configuration["Jwt:Key"]
+            ?? throw new InvalidOperationException("Jwt:Key is not configured.");
+        _issuer = configuration["Jwt:Issuer"]
+            ?? throw new InvalidOperationException("Jwt:Issuer is not configured.");
+        _audience = configuration["Jwt:Audience"]
+            ?? throw new InvalidOperationException("Jwt:Audience is not configured.");
+        _expirationHours = int.Parse(configuration["Jwt:ExpirationHours"] ?? "1");
+    }
 
-        public JwtTokenService(IConfiguration configuration)
+    public string GenerateToken(User user)
+    {
+        var claims = new[]
         {
-            var jwtSettings = configuration.GetSection("JwtSettings");
-            
-            _secretKey = jwtSettings["SecretKey"] 
-                ?? throw new InvalidOperationException("JwtSettings:SecretKey no configurado");
-            
-            _issuer = jwtSettings["Issuer"] ?? "MiApp.API";
-            _audience = jwtSettings["Audience"] ?? "MiApp.Client";
-            _expirationMinutes = int.Parse(jwtSettings["ExpirationMinutes"] ?? "60");
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Name, user.Name),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Role, user.Role)
+        };
 
-            if (_secretKey.Length < 32)
-            {
-                throw new InvalidOperationException("SecretKey debe tener mínimo 32 caracteres (256 bits)");
-            }
-        }
+        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
+        var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
 
-        public async Task<string> GenerateTokenAsync(User user)
-        {
-            return await Task.Run(() =>
-            {
-                // Crear claims
-                var claims = new List<Claim>
-                {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(ClaimTypes.Name, user.Name),
-                    new Claim(ClaimTypes.Email, user.Email),
-                    new Claim(ClaimTypes.Role, user.Role)
-                };
+        var token = new JwtSecurityToken(
+            issuer: _issuer,
+            audience: _audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddHours(_expirationHours),
+            signingCredentials: credentials);
 
-                // Crear clave de firma
-                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretKey));
-                var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-                // Crear descriptor del token
-                var tokenDescriptor = new SecurityTokenDescriptor
-                {
-                    Subject = new ClaimsIdentity(claims),
-                    Expires = DateTime.UtcNow.AddMinutes(_expirationMinutes),
-                    Issuer = _issuer,
-                    Audience = _audience,
-                    SigningCredentials = credentials
-                };
-
-                // Generar y serializar token
-                var tokenHandler = new JwtSecurityTokenHandler();
-                var token = tokenHandler.CreateToken(tokenDescriptor);
-                return tokenHandler.WriteToken(token);
-            });
-        }
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

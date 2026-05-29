@@ -1,12 +1,9 @@
-using System;
-using System.Threading.Tasks;
 using MiApp.Domain.Entities;
 
-namespace MiApp.Domain.Interfaces
+namespace MiApp.Domain.Interfaces;
+
+public interface IUserRepository
 {
-    public interface IUserRepository
-    {
-        Task<User?> GetByEmailAsync(string email);
-        Task<User?> GetByIdAsync(Guid id);
-    }
+    Task<User?> GetByEmailAsync(string email, CancellationToken ct = default);
+    Task<User?> GetByIdAsync(Guid id, CancellationToken ct = default);
 }
